@@ -3,62 +3,15 @@ agent any
 
 ```
 environment {
-    DOCKER_IMAGE = "YOUR_DOCKERHUB_USERNAME/frontend"
-    AWS_REGION = "us-east-1"
-    EKS_CLUSTER = "microservices-eks"
+    AWS_REGION = 'us-east-1'
+    EKS_CLUSTER = 'microservices-eks'
 }
 
 stages {
 
     stage('Checkout') {
         steps {
-            git branch: 'main',
-            url: 'https://github.com/ravinderp11/microservices-project.git'
-        }
-    }
-
-    stage('Build Docker Image') {
-        steps {
-            sh '''
-            docker build -t $DOCKER_IMAGE:latest ./app/frontend
-            '''
-        }
-    }
-
-    stage('Push Docker Image') {
-        steps {
-            withCredentials([
-                usernamePassword(
-                    credentialsId: 'dockerhub',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )
-            ]) {
-                sh '''
-                docker login -u $DOCKER_USER -p $DOCKER_PASS
-                docker push $DOCKER_IMAGE:latest
-                '''
-            }
-        }
-    }
-
-    stage('Update Kubernetes YAML') {
-        steps {
-            sh '''
-            sed -i "s|image:.*|image: $DOCKER_IMAGE:latest|g" k8s/deployment.yaml
-            '''
-        }
-    }
-
-    stage('Deploy to EKS') {
-        steps {
-            sh '''
-            aws eks update-kubeconfig \
-            --region $AWS_REGION \
-            --name $EKS_CLUSTER
-
-            kubectl apply -f k8s/
-            '''
+            checkout scm
         }
     }
 
@@ -67,7 +20,18 @@ stages {
             sh '''
             kubectl get nodes
             kubectl get pods
-            kubectl get svc
+            '''
+        }
+    }
+
+    stage('Deploy') {
+        steps {
+            sh '''
+            aws eks update-kubeconfig \
+            --region $AWS_REGION \
+            --name $EKS_CLUSTER
+
+            kubectl apply -f k8s/
             '''
         }
     }
